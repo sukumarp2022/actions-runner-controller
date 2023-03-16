@@ -110,11 +110,11 @@ containerMode:
   ##         privileged: true
   ##       volumeMounts:
   ##         - mountPath: /certs/client
-  ##           name: dinDInternal
+  ##           name: dind-cert
   ##         - mountPath: /home/runner/_work
   ##           name: workingDirectoryInternal
   ##         - mountPath: /home/runner/externals
-  ##           name: externalsInternal
+  ##           name: dind-externals
   ##     volumes:
   ##     - name: dinDInternal
   ##       emptyDir: {}

@@ -1688,3 +1688,38 @@ func TestTemplateRenderedAutoScalingRunnerSet_KubeModeMergePodSpec(t *testing.T)
 	assert.Equal(t, "others", ars.Spec.Template.Spec.Containers[0].VolumeMounts[1].Name, "VolumeMount name should be others")
 	assert.Equal(t, "/others", ars.Spec.Template.Spec.Containers[0].VolumeMounts[1].MountPath, "VolumeMount mountPath should be /others")
 }
+
+func TestTemplateRenderedAutoScalingRunnerSet_DinDOverwriteDinDPod(t *testing.T) {
+	t.Parallel()
+
+	// Path to the helm chart we will test
+	helmChartPath, err := filepath.Abs("../../gha-runner-scale-set")
+	require.NoError(t, err)
+
+	testValuesPath, err := filepath.Abs("../tests/values_dind_dup_containers.yaml")
+	require.NoError(t, err)
+
+	releaseName := "test-runners"
+	namespaceName := "test-" + strings.ToLower(random.UniqueId())
+
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"controllerServiceAccount.name":      "arc",
+			"controllerServiceAccount.namespace": "arc-system",
+		},
+		ValuesFiles:    []string{testValuesPath},
+		KubectlOptions: k8s.NewKubectlOptions("", "", namespaceName),
+	}
+
+	output := helm.RenderTemplate(t, options, helmChartPath, releaseName, []string{"templates/autoscalingrunnerset.yaml"}, "--debug")
+
+	var ars v1alpha1.AutoscalingRunnerSet
+	helm.UnmarshalK8SYaml(t, output, &ars)
+
+	assert.Len(t, ars.Spec.Template.Spec.Containers, 2, "There should be 2 containers")
+	assert.Equal(t, "runner", ars.Spec.Template.Spec.Containers[0].Name, "Container name should be runner")
+	assert.Equal(t, "DOCKER_HOST", ars.Spec.Template.Spec.Containers[0].Env[0].Name, "DOCKER_HOST should be set")
+	assert.Equal(t, "tcp://localhost:9999", ars.Spec.Template.Spec.Containers[0].Env[0].Value, "DOCKER_HOST should be set to `tcp://localhost:9999`")
+	assert.Equal(t, "dind", ars.Spec.Template.Spec.Containers[1].Name, "Container name should be dind")
+	assert.Equal(t, "my-docker:dind2", ars.Spec.Template.Spec.Containers[1].Image, "my-docker:dind should the image")
+}

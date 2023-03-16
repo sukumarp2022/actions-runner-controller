@@ -88,6 +88,81 @@ volumeMounts:
 {{- end }}
 
 {{- define "gha-runner-scale-set.dind-container" -}}
+{{- $setDindContainer := 1 }}
+{{- range $i, $container := .Values.template.spec.containers }}
+  {{- if eq $container.name "dind" }}
+    {{- $setDindContainer = 0 }}
+    {{- $setDindImage := 1 }}
+    {{- $setDindPrivileged := 1 }}
+    {{- $setDindVolumeMount := 1 }}
+    {{- range $key, $val := $container }}
+      {{- if eq $key "image" }}
+         {{- $setDindImage = 0 }}
+image: {{ $val | toYaml | nindent 2 }}
+      {{- else if eq $key "securityContext" }}
+        {{- $setDindPrivileged = 0 }}
+securityContext:
+        {{- $setPrivileged := 1 }}
+        {{- range $sckey, $scVal := $val }}
+          {{- if eq $sckey "privileged" }}
+            {{- $setPrivileged = 0 }}
+          {{- end }}
+  {{ $sckey }}: {{ $scVal | toYaml | nindent 4 }}
+        {{- end }}
+        {{- if eq $setPrivileged 1 }}
+  privileged: true
+        {{- end }}
+      {{- else if eq $key "volumeMounts" }}
+        {{- $setDindVolumeMount = 0 }}
+volumeMounts:
+        {{- $setWorkVM := 1 }}
+        {{- $setDindCertVM := 1 }}
+        {{- $setDindExternalsVM := 1 }}
+        {{- range $vmi, $vm := $val }}
+          {{- if eq $vm.name "work" }}
+            {{- $setWorkVM = 0 }}
+          {{- else if eq $vm.name "dind-cert" }}
+            {{- $setDindCertVM = 0 }}
+          {{- else if eq $vm.name "dind-externals" }}
+            {{- $setDindExternalsVM = 0 }}
+          {{- end }}
+  - {{ $vm | toYaml | nindent 4 }}
+        {{- end }}
+        {{- if eq $setWorkVM 1 }}
+  - name: work
+    mountPath: /home/runner/_work
+        {{- end }}
+        {{- if eq $setDindCertVM 1 }}
+  - name: dind-cert
+    mountPath: /certs/client
+        {{- end }}
+        {{- if eq $setDindExternalsVM 1 }}
+  - name: dind-externals
+    mountPath: /home/runner/externals
+        {{- end }}
+      {{- else }}
+{{ $key }}: {{ $val | toYaml | nindent 2 }}
+      {{- end }}
+    {{- end }}
+    {{- if eq $setDindImage 1 }}
+image: docker:dind
+    {{- end }}
+    {{- if eq $setDindPrivileged 1 }}
+securityContext:
+  privileged: true
+    {{- end }}
+    {{- if eq $setDindVolumeMount 1 }}
+volumeMounts:
+  - name: work
+    mountPath: /home/runner/_work
+  - name: dind-cert
+    mountPath: /certs/client
+  - name: dind-externals
+    mountPath: /home/runner/externals
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if eq $setDindContainer 1 }}
 image: docker:dind
 securityContext:
   privileged: true
