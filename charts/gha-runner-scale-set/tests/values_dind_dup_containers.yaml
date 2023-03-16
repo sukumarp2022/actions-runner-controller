@@ -1,0 +1,40 @@
+githubConfigUrl: https://github.com/actions/actions-runner-controller
+githubConfigSecret:
+  github_token: test
+template:
+  spec:
+    containers:
+    - name: runner
+      image: ghcr.io/actions/actions-runner:latest
+      env:
+        - name: DOCKER_HOST
+          value: tcp://localhost:9999
+        - name: DOCKER_TLS_VERIFY
+          value: "1"
+        - name: DOCKER_CERT_PATH
+          value: /certs/client
+      volumeMounts:
+        - name: workingDirectoryInternal
+          mountPath: /home/runner/_work
+        - name: dind-cert
+          mountPath: /client
+          readOnly: true
+    - name: dind
+      image: my-docker:dind
+      securityContext:
+        privileged: true
+        seLinuxOptions:
+          user: admin
+      env:
+        - name: MY_ENV
+          value: MY_ENV_VALUE
+      volumeMounts:
+        - mountPath: /client
+          name: dind-cert
+    volumes:
+    - name: work
+      hostPath:
+        path: /data
+        type: Directory
+containerMode:
+  type: dind
