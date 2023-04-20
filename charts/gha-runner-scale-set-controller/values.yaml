@@ -9,7 +9,7 @@ labels: {}
 replicaCount: 1
 
 image:
-  repository: "docker:dind"
+  repository: "ghcr.io/actions/gha-runner-scale-set-controller"
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
